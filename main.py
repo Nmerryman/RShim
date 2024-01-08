@@ -13,23 +13,23 @@ USETEST = False
 test_storage = dict()
 
 
-def store_data(user_id: str, data: str):
+def store_data(project_path: str, data: str):
     if USETEST:
-        test_storage[user_id] = data
+        test_storage[project_path] = data
     else:
         r = Redis(host='localhost', port=6379)
-        r.set(user_id, data.replace(":", ""))
+        r.set(project_path, data)
 
 
-def get_data(user_id: str):
+def get_data(project_path: str):
     if USETEST:
         try:
-            return {"data": test_storage[user_id]}
+            return {"data": test_storage[project_path]}
         except KeyError:
             return {"error": "No data for this user"}
     else:
         r = Redis(host='localhost', port=6379)
-        return {"data": r.get(user_id)}
+        return {"data": r.get(project_path)}
 
 
 @app.get("/")
@@ -37,14 +37,22 @@ def root():
     return {"message": "Hello World"}
 
 
-@app.get("/pull/{user_id}")
-def get(user_id: str):
-    return get_data(user_id)
+@app.get("/pull/{project}")
+def get(project: str, entry: str = None):
+    if entry:
+        entry = ":" + entry
+    else:
+        entry = ""
+    return get_data(project + entry)
 
 
-@app.post("/push/{user_id}")
-def post(user_id: str, data: Data):
-    store_data(user_id, data.data)
+@app.post("/push/{project}")
+def post(project: str, data: Data, entry: str = None):
+    if entry:
+        entry = ":" + entry
+    else:
+        entry = ""
+    store_data(project + entry, data.data)
     return {"message": "Data saved"}
 
 

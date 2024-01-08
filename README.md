@@ -3,3 +3,5 @@ This is a server that acts as a middleman between a redis server and outside con
 
 ## There is no real consideration for security.
 I wanted to provide a simple and generally available place to store low value data. 
+The largest concern is likely the inability to limit the amount of data that an unauthenticated user can store. 
+Due to the low importance of the project, and it's generality, I have not implemented any security measures that may help mitigate these issues as bandaid solutions will not stop a determined person.
