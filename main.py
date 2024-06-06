@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 
 from redis import Redis
+# Redis has been postponed for now
 
 
 class Data(BaseModel):
@@ -9,12 +10,12 @@ class Data(BaseModel):
 
 
 app = FastAPI()
-USETEST = False
+USE_TEST = True
 test_storage = dict()
 
 
 def store_data(project_path: str, data: str):
-    if USETEST:
+    if USE_TEST:
         test_storage[project_path] = data
     else:
         r = Redis(host='localhost', port=6379)
@@ -22,7 +23,7 @@ def store_data(project_path: str, data: str):
 
 
 def get_data(project_path: str):
-    if USETEST:
+    if USE_TEST:
         try:
             return {"data": test_storage[project_path]}
         except KeyError:
@@ -32,6 +33,26 @@ def get_data(project_path: str):
         return {"data": r.get(project_path)}
 
 
+def reset_path(path: str):
+    """
+    Reset a specific value to be nothing
+    """
+    if USE_TEST:
+        try:
+            del test_storage[path]
+        except KeyError:
+            pass
+    else:  # Redis one
+        pass
+
+
+def name_patch(project: str, entry: str = None):
+    if entry:
+        return project + ":" + entry
+    else:
+        return project
+
+
 @app.get("/")
 def root():
     return {"message": "Hello World"}
@@ -39,20 +60,20 @@ def root():
 
 @app.get("/pull/{project}")
 def get(project: str, entry: str = None):
-    if entry:
-        entry = ":" + entry
-    else:
-        entry = ""
-    return get_data(project + entry)
+    path = name_patch(project, entry)
+    return get_data(path)
 
 
 @app.post("/push/{project}")
-def post(project: str, data: Data, entry: str = None):
-    if entry:
-        entry = ":" + entry
-    else:
-        entry = ""
-    store_data(project + entry, data.data)
+def update(project: str, data: Data, entry: str = None):
+    path = name_patch(project, entry)
+    store_data(path, data.data)
     return {"message": "Data saved"}
 
+
+@app.post("/reset/{project}")
+def reset(project: str, entry: str = None):
+    path = name_patch(project, entry)
+    reset_path(path)
+    return {"message": "Cleared"}
 
