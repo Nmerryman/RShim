@@ -9,3 +9,10 @@ Due to the low importance of the project, and it's generality, I have not implem
 ## Running
 Simply run this command to get the basic thing to run.
 `uvicorn main:app --reload`
+
+To allow outside access to the server, change the command to the following.
+`uvicorn main:app --host 0.0.0.0 --reload`
+
+
+
+
