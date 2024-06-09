@@ -19,7 +19,7 @@ USE_TEST = "redis" not in sys.argv
 test_storage = dict()
 
 # If using dict, should we store it somewhere for persistence?
-storage_loc = os.environ["persist_loc"]
+storage_loc = os.environ.get("persist_loc", None)
 
 
 def store_data(project_path: str, data: str):
