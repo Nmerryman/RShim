@@ -1,11 +1,12 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os
 import sys
 import json
 
 # Redis has been postponed for now
-from redis import Redis
+# from redis import Redis
 
 
 class Data(BaseModel):
@@ -13,6 +14,10 @@ class Data(BaseModel):
 
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"]
+)
 
 # Use dictionary as main data structure
 USE_TEST = "redis" not in sys.argv
@@ -20,6 +25,8 @@ test_storage = dict()
 
 # If using dict, should we store it somewhere for persistence?
 storage_loc = os.environ.get("persist_loc", None)
+
+invalid_resp = {"message": "Invalid request."}
 
 
 def store_data(project_path: str, data: str):
@@ -36,8 +43,9 @@ def store_data(project_path: str, data: str):
                 json.dump(test_storage, f)
 
     else:
-        r = Redis(host='localhost', port=6379)
-        r.set(project_path, data)
+        # r = Redis(host='localhost', port=6379)
+        # r.set(project_path, data)
+        pass
 
 
 def get_data(project_path: str):
@@ -82,6 +90,9 @@ def name_patch(project: str, entry: str = None):
     else:
         return project
 
+def calc_hash(name: str) -> int:
+    return sum([ord(a) for a in name])
+
 
 @app.get("/")
 def root():
@@ -92,30 +103,39 @@ def root():
 
 
 @app.get("/pull/{project}")
-def get(project: str, entry: str = None):
+def get(project: str, entry: str = None, hash: int = None):
     """
     Get value at path.
     """
     path = name_patch(project, entry)
-    return get_data(path)
+    if hash == calc_hash(path):
+        return get_data(path)
+    else:
+        return invalid_resp
 
 
 @app.post("/push/{project}")
-def update(project: str, data: Data, entry: str = None):
+def update(project: str, data: Data, entry: str = None, hash: int = None):
     """
     Set value at path.
     """
     path = name_patch(project, entry)
-    store_data(path, data.data)
-    return {"message": "Data saved"}
+    if hash == calc_hash(path):
+        store_data(path, data.data)
+        return {"message": "Data saved"}
+    else:
+        return invalid_resp
 
 
 @app.post("/reset/{project}")
-def reset(project: str, entry: str = None):
+def reset(project: str, entry: str = None, hash: int = None):
     """
     Remove any values at path.
     """
     path = name_patch(project, entry)
-    reset_path(path)
-    return {"message": "Cleared"}
+    if hash == calc_hash(path):
+        reset_path(path)
+        return {"message": "Cleared"}
+    else:
+        return invalid_resp
 
