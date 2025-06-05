@@ -1,0 +1,5 @@
+services:
+  rshim:
+    build: .
+    ports:
+      - "5995:8000"
