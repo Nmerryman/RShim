@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import Optional
 import os
 import sys
 import json
@@ -12,6 +13,10 @@ import json
 class Data(BaseModel):
     data: str
 
+class storageEntry(BaseModel):
+    data: str
+    password: Optional[str] = None
+
 
 app = FastAPI()
 app.add_middleware(
@@ -21,7 +26,7 @@ app.add_middleware(
 
 # Use dictionary as main data structure
 USE_TEST = "redis" not in sys.argv
-test_storage = dict()
+test_storage: dict[str, storageEntry] = dict()
 
 # If using dict, should we store it somewhere for persistence?
 storage_loc = os.environ.get("persist_loc", None)
@@ -64,8 +69,9 @@ def get_data(project_path: str):
         except KeyError:
             return {"error": "No data for this user"}
     else:
-        r = Redis(host='localhost', port=6379)
-        return {"data": r.get(project_path)}
+        # r = Redis(host='localhost', port=6379)
+        # return {"data": r.get(project_path)}
+        return {"error": "Redis missing"}
 
 
 def reset_path(path: str):
@@ -109,31 +115,41 @@ def get(project: str, entry: str = None, hash: int = None):
     """
     path = name_patch(project, entry)
     if hash == calc_hash(path):
-        return get_data(path)
+        data = get_data(path)
+        if "error" in data:
+            return data
+        return {"data": data["data"].data}
     else:
         return invalid_resp
 
 
 @app.post("/push/{project}")
-def update(project: str, data: Data, entry: str = None, hash: int = None):
+def update(project: str, data: Data, entry: str = None, hash: int = None, password: str = None):
     """
     Set value at path.
     """
     path = name_patch(project, entry)
-    if hash == calc_hash(path):
-        store_data(path, data.data)
-        return {"message": "Data saved"}
+    if hash == calc_hash(path):     # Permit write?
+        existing = get_data(path)
+        if "error" in existing:
+            return existing
+        data: storageEntry = existing["data"]
+        if data.password is None or data.password == password:
+            store_data(path, data.data)
+            return {"message": "Data saved"}
+        else:
+            return {"error", "Incorrect password"}
     else:
         return invalid_resp
 
 
 @app.post("/reset/{project}")
-def reset(project: str, entry: str = None, hash: int = None):
+def reset(project: str, entry: str = None, hash: int = None, secret: int = 0):
     """
     Remove any values at path.
     """
     path = name_patch(project, entry)
-    if hash == calc_hash(path):
+    if hash == calc_hash(path) and secret == 2:
         reset_path(path)
         return {"message": "Cleared"}
     else:
