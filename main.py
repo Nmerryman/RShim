@@ -31,8 +31,6 @@ test_storage: dict[str, storageEntry] = dict()
 # If using dict, should we store it somewhere for persistence?
 storage_loc = os.environ.get("persist_loc", None)
 
-invalid_resp = {"error": "Invalid request."}
-
 
 def store_data(project_path: str, data: str):
     """
@@ -120,7 +118,7 @@ def get(project: str, entry: str = None, hash: int = None):
             return data
         return {"data": data["data"].data, "hasPassword": data["data"].password is not None}
     else:
-        return invalid_resp
+        return {"error": "Invalid request."}
 
 
 @app.post("/push/{project}")
@@ -140,7 +138,7 @@ def update(project: str, data: Data, entry: str = None, hash: int = None, passwo
         else:
             return {"error", "Incorrect password"}
     else:
-        return invalid_resp
+        return {"error": "Invalid request."}
 
 
 @app.post("/reset/{project}")
@@ -153,5 +151,5 @@ def reset(project: str, entry: str = None, hash: int = None, secret: int = 0):
         reset_path(path)
         return {"message": "Cleared"}
     else:
-        return invalid_resp
+        return {"error": "Invalid request."}
 
