@@ -31,7 +31,7 @@ test_storage: dict[str, storageEntry] = dict()
 # If using dict, should we store it somewhere for persistence?
 storage_loc = os.environ.get("persist_loc", None)
 
-invalid_resp = {"message": "Invalid request."}
+invalid_resp = {"error": "Invalid request."}
 
 
 def store_data(project_path: str, data: str):
@@ -118,7 +118,7 @@ def get(project: str, entry: str = None, hash: int = None):
         data = get_data(path)
         if "error" in data:
             return data
-        return {"data": data["data"].data}
+        return {"data": data["data"].data, "hasPassword": data["data"].password is not None}
     else:
         return invalid_resp
 
