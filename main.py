@@ -10,13 +10,13 @@ import json
 # from redis import Redis
 
 
-class Data(BaseModel):
+class Data(BaseModel):  # Network message
     data: str
 
-class storageEntry(BaseModel):
-    data: str
-    password: Optional[str] = None
-
+# class StorageEntry(BaseModel):
+#     data: str
+#     password: Optional[str] = None
+# type StorageEntry = dict[str, str]
 
 app = FastAPI()
 app.add_middleware(
@@ -26,23 +26,24 @@ app.add_middleware(
 
 # Use dictionary as main data structure
 USE_TEST = "redis" not in sys.argv
-test_storage: dict[str, storageEntry] = dict()
+test_storage: dict[str, dict[str, str]] = dict()
 
 # If using dict, should we store it somewhere for persistence?
 storage_loc = os.environ.get("persist_loc", None)
 
 
-def store_data(project_path: str, data: str):
+def store_data(project_path: str, data: dict[str, str]):
     """
     Store data into chosen location.
     """
     global test_storage
 
     if USE_TEST:
+
         test_storage[project_path] = data
         # Save the updated dict.
         if storage_loc:
-            with open(storage_loc, "w") as f:
+            with open(storage_loc + "/" + project_path, "w") as f:
                 json.dump(test_storage, f)
 
     else:
@@ -59,9 +60,9 @@ def get_data(project_path: str):
 
     if USE_TEST:
         # Load dict if at already exists with preexisting data.
-        if storage_loc and os.path.exists(storage_loc):
-            with open(storage_loc, "r") as f:
-                test_storage = json.load(f)
+        # if storage_loc and os.path.exists(storage_loc):
+        #     with open(storage_loc + "/" + project_path, "r") as f:
+        #         test_storage = json.load(f)
         try:
             return {"data": test_storage[project_path]}
         except KeyError:
@@ -115,8 +116,9 @@ def get(project: str, entry: str = None, hash: int = None):
     if hash == calc_hash(path):
         data = get_data(path)
         if "error" in data:
-            return data
-        return {"data": data["data"].data, "hasPassword": data["data"].password is not None}
+            return {"error": data["error"]}
+        print(data)
+        return {"data": data["data"]["data"], "hasPassword": data["data"]["password"] is not None}
     else:
         return {"error": "Invalid request."}
 
@@ -130,10 +132,14 @@ def update(project: str, data: Data, entry: str = None, hash: int = None, passwo
     if hash == calc_hash(path):     # Permit write?
         existing = get_data(path)
         if "error" in existing:
-            return existing
-        data: storageEntry = existing["data"]
-        if data.password is None or data.password == password:
-            store_data(path, data.data)
+            if existing["error"] == "No data for this user":
+                store_data(path, {"data": data.data, "password": password})
+                return {"message": "Data saved"}
+            else:
+                return {"error": existing["error"]}
+        existing_data: dict[str, str] = existing["data"]
+        if existing_data["password"] is None or existing_data["password"] == password:
+            store_data(path, {"data": data.data, "password": password})
             return {"message": "Data saved"}
         else:
             return {"error", "Incorrect password"}
