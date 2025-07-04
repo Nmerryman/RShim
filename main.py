@@ -21,7 +21,9 @@ class Data(BaseModel):  # Network message
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"]
+    allow_origins=["*"],
+    allow_headers=["*"],
+    allow_methods=["*"]
 )
 
 # Use dictionary as main data structure
@@ -44,7 +46,7 @@ def store_data(project_path: str, data: dict[str, str]):
         # Save the updated dict.
         if storage_loc:
             with open(storage_loc + "/" + project_path, "w") as f:
-                json.dump(test_storage, f)
+                json.dump(data, f)
 
     else:
         # r = Redis(host='localhost', port=6379)
@@ -120,7 +122,7 @@ def get(project: str, entry: str = None, hash: int = None):
         print(data)
         return {"data": data["data"]["data"], "hasPassword": data["data"]["password"] is not None}
     else:
-        return {"error": "Invalid request."}
+        return {"error": "Invalid Hash."}
 
 
 @app.post("/push/{project}")
@@ -144,7 +146,7 @@ def update(project: str, data: Data, entry: str = None, hash: int = None, passwo
         else:
             return {"error", "Incorrect password"}
     else:
-        return {"error": "Invalid request."}
+        return {"error": "Invalid Hash."}
 
 
 @app.post("/reset/{project}")
@@ -157,5 +159,5 @@ def reset(project: str, entry: str = None, hash: int = None, secret: int = 0):
         reset_path(path)
         return {"message": "Cleared"}
     else:
-        return {"error": "Invalid request."}
+        return {"error": "Invalid Hash."}
 
